@@ -3,37 +3,43 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from feedback import retrain_with_feedback
 from flask import Flask, request, jsonify, render_template
 import joblib
-from feedback import save_feedback
-from preprocess import clean_text
 
-# Fix import path
+from feedback import save_feedback, retrain_with_feedback
 
+MODEL_PATH = "models/spam_model.pkl"
 
 app = Flask(__name__)
 
-# Load model
-model = joblib.load("models/spam_model.pkl")
-vectorizer = joblib.load("models/vectorizer.pkl")
+# 🔹 Load model
+def load_model():
+    if not os.path.exists(MODEL_PATH):
+        raise Exception("Model not found. Train the model first.")
+    return joblib.load(MODEL_PATH)
+
+model = load_model()
 
 
+# -------------------------------
+# Home UI
+# -------------------------------
 @app.route("/")
 def home():
     return render_template("index.html", confidence=0)
 
 
+# -------------------------------
+# API Prediction
+# -------------------------------
 @app.route("/predict", methods=["POST"])
 def predict():
-    data = request.get_json()
+    global model
 
+    data = request.get_json()
     text = data.get("text", "")
 
-    cleaned = clean_text(text)
-    vec = vectorizer.transform([cleaned])
-
-    prob = model.predict_proba(vec)[0][1]
+    prob = model.predict_proba([text])[0][1]
     prediction = "spam" if prob >= 0.6 else "ham"
 
     return jsonify({
@@ -41,26 +47,30 @@ def predict():
         "confidence": float(prob)
     })
 
-@app.route("/retrain", methods=["POST"])
-def retrain():
-    retrain_with_feedback()
-    return jsonify({"message": "Model retrained successfully"})
+
+# -------------------------------
+# UI Prediction
+# -------------------------------
 @app.route("/predict_ui", methods=["POST"])
 def predict_ui():
+    global model
+
     text = request.form.get("text")
 
-    cleaned = clean_text(text)
-    vec = vectorizer.transform([cleaned])
+    prob = model.predict_proba([text])[0][1]
+    prediction = "spam" if prob >= 0.6 else "ham"
 
-    prob = model.predict_proba(vec)[0][1]
-    prediction = "spam" if prob >= 0.5 else "ham"
-
-    print(prob)
     return render_template(
         "index.html",
         prediction=prediction,
-        confidence=round(prob * 100, 2)
+        confidence=round(prob * 100, 2),
+        text=text
     )
+
+
+# -------------------------------
+# Feedback
+# -------------------------------
 @app.route("/feedback", methods=["POST"])
 def feedback():
     data = request.get_json()
@@ -78,5 +88,26 @@ def feedback():
         "message": "Feedback saved successfully"
     })
 
+
+# -------------------------------
+# Retrain
+# -------------------------------
+@app.route("/retrain", methods=["POST"])
+def retrain():
+    global model
+
+    retrain_with_feedback()
+
+    # 🔥 reload updated model
+    model = load_model()
+
+    return jsonify({
+        "message": "Model retrained and reloaded successfully"
+    })
+
+
+# -------------------------------
+# Run
+# -------------------------------
 if __name__ == "__main__":
     app.run(debug=True)
