@@ -3,7 +3,8 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from flask import Flask, request, jsonify
+from feedback import retrain_with_feedback
+from flask import Flask, request, jsonify, render_template
 import joblib
 from feedback import save_feedback
 from preprocess import clean_text
@@ -20,7 +21,7 @@ vectorizer = joblib.load("models/vectorizer.pkl")
 
 @app.route("/")
 def home():
-    return "Spam Detection API Running"
+    return render_template("index.html", confidence=0)
 
 
 @app.route("/predict", methods=["POST"])
@@ -39,6 +40,27 @@ def predict():
         "prediction": prediction,
         "confidence": float(prob)
     })
+
+@app.route("/retrain", methods=["POST"])
+def retrain():
+    retrain_with_feedback()
+    return jsonify({"message": "Model retrained successfully"})
+@app.route("/predict_ui", methods=["POST"])
+def predict_ui():
+    text = request.form.get("text")
+
+    cleaned = clean_text(text)
+    vec = vectorizer.transform([cleaned])
+
+    prob = model.predict_proba(vec)[0][1]
+    prediction = "spam" if prob >= 0.5 else "ham"
+
+    print(prob)
+    return render_template(
+        "index.html",
+        prediction=prediction,
+        confidence=round(prob * 100, 2)
+    )
 @app.route("/feedback", methods=["POST"])
 def feedback():
     data = request.get_json()

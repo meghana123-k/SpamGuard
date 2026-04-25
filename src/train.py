@@ -33,7 +33,7 @@ def train_model():
     ])
 
     # Vectorize
-    vectorizer = TfidfVectorizer(max_features=7000, ngram_range=(1,2), min_df=5)
+    vectorizer = TfidfVectorizer(max_features=7000, ngram_range=(1,2), min_df=2)
     X = vectorizer.fit_transform(df['clean_text'])
     y = df['label']
 
