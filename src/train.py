@@ -88,8 +88,25 @@ def train_model():
     X = df['text']
     y = df['label'].astype(int)
 
-    print(f"Dataset size: {len(df)}")
-    print(f"Spam ratio : {sum(y)/len(y):.2%}")
+    print("\n📊 DATASET DEBUG INFO")
+    print(f"Total dataset size: {len(df)}")
+
+    # Count spam vs ham
+    spam_count = sum(y)
+    ham_count = len(y) - spam_count
+
+    print(f"Spam count: {spam_count}")
+    print(f"Ham count : {ham_count}")
+    print(f"Spam ratio: {spam_count / len(y):.2%}")
+
+    # 🔥 Check feedback contribution
+    feedback_path = f"{DATA_PATH}/feedback.csv"
+    if os.path.exists(feedback_path):
+        feedback_df = pd.read_csv(feedback_path)
+        print(f"Feedback samples (raw): {len(feedback_df)}")
+        print(f"Feedback after weighting (x3): {len(feedback_df) * 3}")
+    else:
+        print("No feedback file found ❌")
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y

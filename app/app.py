@@ -99,11 +99,9 @@ def retrain():
     retrain_with_feedback()
 
     # 🔥 reload updated model
-    model = load_model()
+    model = joblib.load("models/spam_model.pkl")
 
-    return jsonify({
-        "message": "Model retrained and reloaded successfully"
-    })
+    return jsonify({"message": "Model retrained and reloaded successfully"})
 
 
 # -------------------------------
